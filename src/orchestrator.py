@@ -7,9 +7,8 @@ import os
 
 from src.workflow import check_node_against_policy, check_edge_against_policy, Task, Workflow
 
-
 ###############################################################################
-# 3. The Orchestrator (To Run Workflows Sent by Users)
+# The Orchestrator (To Run Workflows Sent by Users)
 ###############################################################################
 
 def task_runner(wf_id, task_id, inputs, orchestrator):
