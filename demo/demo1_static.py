@@ -63,9 +63,6 @@ def build_demo_workflow():
     wf.add_task(static_task6, dependencies=['StaticTask4'])
     wf.add_task(static_task7, dependencies=['StaticTask6'])
 
-# start with two nodes, first one will have one more nodes, second one will have two more nodes, and add any two more nodes in a linear manner
-
-
     return wf
 
 ###############################################################################

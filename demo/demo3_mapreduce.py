@@ -14,7 +14,7 @@ def map_reduce_starter_func(wf_id, task_id, inputs, orchestrator):
         map_tid = f"{task_id}_Map_{i+1}"
         all_map_tids.append(map_tid)
         map_constraints = TaskConstraints()
-        map_task = Task(map_tid, map_func, constraints=map_constraints)
+        map_task = Task(map_tid, map_func_multiply_by_2, constraints=map_constraints)
         orchestrator.spawn_task(wf_id=wf_id, creator_task_id=task_id, new_task=map_task, input_data=val)
 
     reduce_tid = f"{task_id}_Reduce"
@@ -25,15 +25,15 @@ def map_reduce_starter_func(wf_id, task_id, inputs, orchestrator):
         valid_incoming_edges_policy='custom',
         valid_incoming_edges=[(m, reduce_tid) for m in all_map_tids]
     )
-    reduce_task = Task(reduce_tid, reduce_func, constraints=reduce_constraints)
+    reduce_task = Task(reduce_tid, reduce_func_sum_all, constraints=reduce_constraints)
     orchestrator.spawn_task(wf_id=wf_id, creator_task_id=task_id, new_task=reduce_task, new_edges=[(m, reduce_tid) for m in all_map_tids])
 
-def map_func(wf_id, task_id, inputs, orchestrator):
+def map_func_multiply_by_2(wf_id, task_id, inputs, orchestrator):
     result = sum(inputs) if isinstance(inputs, list) else inputs
     result *= 2
     return result
 
-def reduce_func(wf_id, task_id, inputs, orchestrator):
+def reduce_func_sum_all(wf_id, task_id, inputs, orchestrator):
     result = sum(inputs) if isinstance(inputs, list) else inputs
     return result
 

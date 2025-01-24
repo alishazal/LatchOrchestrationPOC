@@ -16,7 +16,7 @@ def map_reduce_starter_func(wf_id, task_id, inputs, orchestrator):
         map_tid = f"{task_id}_Map_{i+1}"
         all_map_tids.append(map_tid)
         map_constraints = TaskConstraints()
-        map_task = Task(map_tid, map_func, constraints=map_constraints)
+        map_task = Task(map_tid, map_func_multiple_by_2, constraints=map_constraints)
         orchestrator.spawn_task(
             wf_id=wf_id,
             creator_task_id=task_id,
@@ -32,7 +32,7 @@ def map_reduce_starter_func(wf_id, task_id, inputs, orchestrator):
         valid_incoming_edges_policy='custom',
         valid_incoming_edges=[(m, reduce_tid) for m in all_map_tids]
     )
-    reduce_task = Task(reduce_tid, reduce_func, constraints=reduce_constraints)
+    reduce_task = Task(reduce_tid, reduce_func_sum_all, constraints=reduce_constraints)
     orchestrator.spawn_task(
         wf_id=wf_id,
         creator_task_id=task_id,
@@ -42,18 +42,18 @@ def map_reduce_starter_func(wf_id, task_id, inputs, orchestrator):
     print(f"[map_reduce_starter_func] {task_id} finished")
     return None
 
-def map_func(wf_id, task_id, inputs, orchestrator):
-    print(f"[map_func] {task_id} sees inputs={inputs}")
+def map_func_multiple_by_2(wf_id, task_id, inputs, orchestrator):
+    print(f"[map_func_multiple_by_2] {task_id} sees inputs={inputs}")
     result = sum(inputs) if isinstance(inputs, list) else inputs
     result *= 2
-    print(f"[map_func] {task_id} => {result}")
+    print(f"[map_func_multiple_by_2] {task_id} => {result}")
     return result
 
-def reduce_func(wf_id, task_id, inputs, orchestrator):
-    print(f"[reduce_func] {task_id} sees {inputs}")
+def reduce_func_sum_all(wf_id, task_id, inputs, orchestrator):
+    print(f"[reduce_func_sum_all] {task_id} sees {inputs}")
     result = sum(inputs) if isinstance(inputs, list) else inputs
     orchestrator.spawn_task(wf_id=wf_id, creator_task_id=task_id, new_task=GLOBAL_TASKS['StaticTask2'], new_edges=[(task_id, 'StaticTask2')], skip_visual_edge=True)
-    print(f"[reduce_func] {task_id} => {inputs}")
+    print(f"[reduce_func_sum_all] {task_id} => {inputs}")
     return result
 
 def branch_func(wf_id, task_id, inputs, orchestrator):
@@ -79,7 +79,7 @@ def branch_a_func(wf_id, task_id, inputs, orchestrator):
     print(f"[branch_a_func] {task_id} input={inputs}")
     sum_inputs = sum(inputs) if isinstance(inputs, list) else inputs
     print(f"[branch_a_func] sum_inputs={sum_inputs}")
-    if sum_inputs > 100:
+    if sum_inputs > 105:
         orchestrator.spawn_task(wf_id=wf_id, creator_task_id=task_id, new_task=GLOBAL_TASKS['MapReduceStarter'], input_data=[sum_inputs + (i*10) for i in range(5)])
     else:
         orchestrator.spawn_task(wf_id=wf_id, creator_task_id=task_id, new_task=GLOBAL_TASKS['BranchD'], input_data=[sum_inputs])
@@ -87,18 +87,18 @@ def branch_a_func(wf_id, task_id, inputs, orchestrator):
     print(f"[branch_a_func] exiting")
     return None
 
-def static_func1(wf_id, task_id, inputs, orchestrator):
-    print(f"[static_func1] {task_id} input={inputs}")
+def static_func_add_100(wf_id, task_id, inputs, orchestrator):
+    print(f"[static_func_add_100] {task_id} input={inputs}")
     result = sum(inputs) if isinstance(inputs, list) else inputs
     result += 100
-    print(f"[static_func1] {task_id} => {result}")
+    print(f"[static_func_add_100] {task_id} => {result}")
     return result
 
-def static_func2(wf_id, task_id, inputs, orchestrator):
-    print(f"[static_func2] {task_id} input={inputs}")
+def static_func_add_5000(wf_id, task_id, inputs, orchestrator):
+    print(f"[static_func_add_5000] {task_id} input={inputs}")
     result = sum(inputs) if isinstance(inputs, list) else inputs
     result += 5000
-    print(f"[static_func2] {task_id} => {result}")
+    print(f"[static_func_add_5000] {task_id} => {result}")
     return result
 
 ###############################################################################
@@ -110,10 +110,10 @@ def build_demo_workflow():
     global GLOBAL_TASKS
 
     # Some static task
-    static_task1 = Task("StaticTask1", static_func1)
+    static_task1 = Task("StaticTask1", static_func_add_100)
     GLOBAL_TASKS['StaticTask1'] = static_task1
 
-    static_task2 = Task("StaticTask2", static_func2)
+    static_task2 = Task("StaticTask2", static_func_add_5000)
     GLOBAL_TASKS['StaticTask2'] = static_task2
 
     # Branching Related Tasks
@@ -126,13 +126,13 @@ def build_demo_workflow():
     branch_a = Task("BranchA", branch_a_func, constraints=branch_a_constraints)
     GLOBAL_TASKS['BranchA'] = branch_a
     
-    branch_b = Task("BranchB", static_func2)
+    branch_b = Task("BranchB", static_func_add_5000)
     GLOBAL_TASKS['BranchB'] = branch_b
 
-    branch_c = Task("BranchC", static_func2)
+    branch_c = Task("BranchC", static_func_add_5000)
     GLOBAL_TASKS['BranchC'] = branch_c
 
-    branch_d = Task("BranchD", static_func2)
+    branch_d = Task("BranchD", static_func_add_5000)
     GLOBAL_TASKS['BranchD'] = branch_d
 
     branching_node_constraints = TaskConstraints(

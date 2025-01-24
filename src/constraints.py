@@ -19,12 +19,20 @@ class TaskConstraints:
         valid_outgoing_edges: Optional[List[Tuple[str, str]]] = [],
     ):
         self.max_spawn_count = max_spawn_count
+
+        # Valid nodes that the current node can spawn
         self.valid_next_nodes_policy = valid_next_nodes_policy
         self.valid_next_nodes = valid_next_nodes
+
+        # Valid nodes that the current node can be spawned from
         self.valid_previous_nodes_policy = valid_previous_nodes_policy
         self.valid_previous_nodes = valid_previous_nodes
+
+        # Valid incoming edges that the current node can have
         self.valid_incoming_edges_policy = valid_incoming_edges_policy
         self.valid_incoming_edges = valid_incoming_edges
+
+        # Valid outgoing edges that the current node can have
         self.valid_outgoing_edges_policy = valid_outgoing_edges_policy
         self.valid_outgoing_edges = valid_outgoing_edges
 

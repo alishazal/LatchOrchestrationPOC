@@ -16,12 +16,12 @@ def branch_func(wf_id, task_id, inputs, orchestrator):
     else:
         orchestrator.spawn_task(wf_id=wf_id, creator_task_id=task_id, new_task=GLOBAL_TASKS['BranchB'], input_data=inputs)
 
-def static_func1(wf_id, task_id, inputs, orchestrator):
+def static_add_100(wf_id, task_id, inputs, orchestrator):
     result = sum(inputs) if isinstance(inputs, list) else inputs
     result += 100
     return result
 
-def static_func2(wf_id, task_id, inputs, orchestrator):
+def static_multiply_by_2(wf_id, task_id, inputs, orchestrator):
     result = sum(inputs) if isinstance(inputs, list) else inputs
     result *= 2
     return result
@@ -34,10 +34,10 @@ def build_demo_workflow():
     global GLOBAL_TASKS
 
     # 2.1 Creating the tasks
-    branch_a = Task("BranchA", static_func1)
+    branch_a = Task("BranchA", static_add_100)
     GLOBAL_TASKS['BranchA'] = branch_a
     
-    branch_b = Task("BranchB", static_func2)
+    branch_b = Task("BranchB", static_multiply_by_2)
     GLOBAL_TASKS['BranchB'] = branch_b
 
     branching_node_constraints = TaskConstraints(

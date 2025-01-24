@@ -106,9 +106,6 @@ class Workflow:
         self.visualize()
         self.visualization_counter += 1
 
-    def validate_constraints(self):
-        pass
-
     def _assert_no_cycle(self):
         g = nx.DiGraph()
         for t_id in self.tasks:

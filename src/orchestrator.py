@@ -175,9 +175,25 @@ class Orchestrator:
         """
         Mid-run spawn. Check creator's constraints, new_task's constraints, cycle check, and schedule it in the queue.
         """
+        def fail_workflow(error_msg: str):
+            # Empty the ready queue
+            self.ready_queue[wf_id].clear()
+            
+            # Mark all pending/running tasks as failed
+            for task_id in self.workflows[wf_id].tasks:
+                key = (wf_id, task_id)
+                if self.task_status[key] in ['pending', 'running']:
+                    self.task_status[key] = 'failed'
+            
+            # Stop the workflow loop
+            self.running_loops[wf_id] = False
+            
+            # Raise the error
+            raise RuntimeError(f"Workflow {wf_id} terminated due to constraint violation: {error_msg}")
+
         wf = self.workflows[wf_id]
         if creator_task_id not in wf.tasks:
-            raise ValueError(f"Creator {creator_task_id} not in wf {wf_id}")
+            fail_workflow(f"Creator {creator_task_id} not in wf {wf_id}")
 
         creator_obj = wf.tasks[creator_task_id]
 
@@ -185,15 +201,19 @@ class Orchestrator:
         key = (wf_id, creator_task_id)
         if creator_obj.constraints.max_spawn_count is not None:
             if self.spawn_counts[key] >= creator_obj.constraints.max_spawn_count:
-                raise RuntimeError(f"Task {creator_task_id} exceeded spawn count")
+                fail_workflow(f"Task {creator_task_id} exceeded spawn count")
 
         # Check node constraints
-        check_node_against_policy(creator_obj, new_task, direction='next')
-        check_node_against_policy(creator_obj, new_task, direction='previous')
+        try:
+            check_node_against_policy(creator_obj, new_task, direction='next')
+            check_node_against_policy(creator_obj, new_task, direction='previous')
+        except RuntimeError as e:
+            fail_workflow(str(e))
 
         # Insert the new task
         if new_task.task_id in wf.tasks:
-            raise ValueError(f"Task {new_task.task_id} already in wf {wf_id}")
+            fail_workflow(f"Task {new_task.task_id} already in wf {wf_id}")
+
         wf.tasks[new_task.task_id] = new_task
         self.task_status[(wf_id, new_task.task_id)] = 'pending'
         self.spawn_counts[(wf_id, new_task.task_id)] = 0
@@ -202,8 +222,6 @@ class Orchestrator:
         parent_step = self.execution_history.get((wf_id, creator_task_id), 0)
         self.execution_history[(wf_id, new_task.task_id)] = parent_step + 1
 
-        # Adding only to visual edge in case the user does not want to connect the creator to the new task as a dependency.
-        # In any case we still want to show it as connected in the visualization because the new node was created by the creator.
         if not skip_visual_edge:
             wf.visual_edges.append((creator_task_id, new_task.task_id))
 
@@ -212,20 +230,24 @@ class Orchestrator:
             for (src, dst) in new_edges:
                 # Make sure the edge is related to atleast the parent_task or new_task
                 if src not in [creator_task_id, new_task.task_id] and dst not in [creator_task_id, new_task.task_id]:
-                    raise RuntimeError(f"The edge ({src}, {dst}) is not related to the creator or the new task.")
+                    fail_workflow(f"The edge ({src}, {dst}) is not related to the creator or the new task.")
 
                 src_object = wf.tasks[src]
                 dst_object = wf.tasks[dst]
 
-                # Check edge constraints
-                check_edge_against_policy(dst_object, src_object, direction='incoming')
-                check_edge_against_policy(src_object, dst, direction='outgoing')
+                try:
+                    # Check edge constraints
+                    check_edge_against_policy(dst_object, src_object, direction='incoming')
+                    check_edge_against_policy(src_object, dst, direction='outgoing')
+                except RuntimeError as e:
+                    fail_workflow(str(e))
+                    
                 wf.edges.append((src,dst))
                 wf.visual_edges.append((src,dst))
 
         # now do cycle check
         if not self.is_acyclic(wf):
-            raise ValueError("spawn_task caused cycle")
+            fail_workflow("spawn_task caused cycle")
         
         if input_data is not None:
             has_deps = any(dst == new_task.task_id for _, dst in wf.edges)
