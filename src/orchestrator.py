@@ -5,7 +5,7 @@ import time
 from collections import deque
 import os
 
-from workflow import check_node_against_policy, check_edge_against_policy, Task, Workflow
+from src.workflow import check_node_against_policy, check_edge_against_policy, Task, Workflow
 
 
 ###############################################################################

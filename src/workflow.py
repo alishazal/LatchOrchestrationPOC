@@ -3,7 +3,7 @@ import graphviz
 from typing import List, Optional
 import os
 
-from constraints import TaskConstraints
+from src.constraints import TaskConstraints
 
 ###############################################################################
 # 2. Task + Workflow (Developer Side)
