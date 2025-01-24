@@ -41,6 +41,7 @@ class Orchestrator:
         self.running_loops = {} # wf_id -> bool; used to tore the status of a workflow; will be used to check if a workflow is already running
         self.run_counter = {} # wf_id -> int; to count how many nodes have been run; used in visualization for labelling
         self.execution_history = {} # (wf_id, task_id) -> int
+        self.visualization_counter = {} # wf_id -> int; to count how many times the visualization has been run
 
     def register_workflow(self, wf: Workflow):
         """
@@ -54,6 +55,8 @@ class Orchestrator:
             self.spawn_counts[(wf.workflow_id, t_id)] = 0
         self.ready_queue[wf.workflow_id] = deque()
         self.running_loops[wf.workflow_id] = False
+        self.run_counter[wf.workflow_id] = 0
+        self.visualization_counter[wf.workflow_id] = 1
         print(f"[Orchestrator] Received workflow {wf.workflow_id} with {len(wf.tasks)} tasks, {len(wf.edges)} edges.")
 
     def run_workflow(self, wf_id: str, input_data: dict):
@@ -107,6 +110,9 @@ class Orchestrator:
             rev.setdefault(c,[]).append(p)
 
         # discover newly unblocked tasks
+        current_step = max(self.execution_history.get((wf_id, tid), 0) for tid in wf.tasks) + 1
+        newly_unblocked = []
+        
         for t_id in wf.tasks:
             key = (wf_id, t_id)
             if self.task_status[key] == 'pending':
@@ -122,17 +128,18 @@ class Orchestrator:
                         inputs.append(p_output)
                 
                 if all_done:
-                    # push to queue if not already in it
-                    self.ready_queue[wf_id].append((t_id, inputs))
+                    newly_unblocked.append((t_id, inputs))
+        
+        # Add all newly unblocked tasks at the same step
+        for tid, inputs in newly_unblocked:
+            self.ready_queue[wf_id].append((tid, inputs))
+            self.execution_history[(wf_id, tid)] = current_step
         
         # spawn whatever is in queue
         while self.ready_queue[wf_id]:
             (tid, inputs) = self.ready_queue[wf_id].popleft()
-            latest_run_counter = self.run_counter.get(wf_id, -1) + 1
-            self.run_counter[wf_id] = latest_run_counter
-            self.execution_history[(wf_id, tid)] = latest_run_counter
-            self.visualize(wf_id)
             self.spawn_parallel(wf_id, tid, inputs)
+            self.visualize(wf_id)
 
     def spawn_parallel(self, wf_id: str, t_id: str, inputs: Any):
         """
@@ -156,7 +163,6 @@ class Orchestrator:
         
         self.task_status[key] = 'done'
         self.task_outputs[key] = result
-        self.visualize(wf_id)
 
     def spawn_task(
         self,
@@ -193,6 +199,9 @@ class Orchestrator:
         self.task_status[(wf_id, new_task.task_id)] = 'pending'
         self.spawn_counts[(wf_id, new_task.task_id)] = 0
         self.spawn_counts[key] += 1
+
+        parent_step = self.execution_history.get((wf_id, creator_task_id), 0)
+        self.execution_history[(wf_id, new_task.task_id)] = parent_step + 1
 
         # Adding only to visual edge in case the user does not want to connect the creator to the new task as a dependency.
         # In any case we still want to show it as connected in the visualization because the new node was created by the creator.
@@ -297,9 +306,10 @@ class Orchestrator:
                                 (t_obj.constraints.valid_outgoing_edges_policy == 'custom' and (t_id, cnode) in t_obj.constraints.valid_outgoing_edges)):
                                 dot.edge(t_id, cnode, style="dashed", color="gray")
 
-        filename = f'./demo_pngs/{wf_id}/{wf_id}_Run_{self.run_counter[wf_id]}'
+        filename = f'./demo_pngs/{wf_id}/{wf_id}_Run_{self.visualization_counter[wf_id]}'
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         dot.render(filename, cleanup=True)
+        self.visualization_counter[wf_id] += 1
         print(f"[Orchestrator] rendered runtime to {filename}.png")
 
     def is_acyclic(self, wf: Workflow):

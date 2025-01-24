@@ -9,9 +9,6 @@ GLOBAL_TASKS = {}
 ###############################################################################
 
 def map_reduce_starter_func(wf_id, task_id, inputs, orchestrator):
-    """
-    Spawns map task on each input and adds it as a dependency for ReduceTask
-    """
     print(f"[map_reduce_starter_func] {task_id} sees inputs={inputs}")
     
     all_map_tids = []
@@ -46,9 +43,6 @@ def map_reduce_starter_func(wf_id, task_id, inputs, orchestrator):
     return None
 
 def map_func(wf_id, task_id, inputs, orchestrator):
-    """
-    Doubles the input
-    """
     print(f"[map_func] {task_id} sees inputs={inputs}")
     result = sum(inputs) if isinstance(inputs, list) else inputs
     result *= 2
@@ -56,9 +50,6 @@ def map_func(wf_id, task_id, inputs, orchestrator):
     return result
 
 def reduce_func(wf_id, task_id, inputs, orchestrator):
-    """
-    Summation of the partial results
-    """
     print(f"[reduce_func] {task_id} sees {inputs}")
     result = sum(inputs) if isinstance(inputs, list) else inputs
     orchestrator.spawn_task(wf_id=wf_id, creator_task_id=task_id, new_task=GLOBAL_TASKS['StaticTask2'], new_edges=[(task_id, 'StaticTask2')], skip_visual_edge=True)
@@ -66,9 +57,6 @@ def reduce_func(wf_id, task_id, inputs, orchestrator):
     return result
 
 def branch_func(wf_id, task_id, inputs, orchestrator):
-    """
-    If input > 10 => spawn BranchA, else BranchB
-    """
     global GLOBAL_TASKS
     print(f"[branch_func] {task_id} input={inputs}")
     sum_inputs = sum(inputs) if isinstance(inputs, list) else inputs
@@ -87,9 +75,6 @@ def branch_func(wf_id, task_id, inputs, orchestrator):
     return None
 
 def branch_a_func(wf_id, task_id, inputs, orchestrator):
-    """
-    If input > 10 => spawn BranchA, else BranchB
-    """
     global GLOBAL_TASKS
     print(f"[branch_a_func] {task_id} input={inputs}")
     sum_inputs = sum(inputs) if isinstance(inputs, list) else inputs
@@ -121,7 +106,7 @@ def static_func2(wf_id, task_id, inputs, orchestrator):
 ###############################################################################
 
 def build_demo_workflow():
-    # 1. creating the tasks
+    # 2.1 Creating the tasks
     global GLOBAL_TASKS
 
     # Some static task
@@ -173,8 +158,8 @@ def build_demo_workflow():
     map_reduce_starter_task = Task("MapReduceStarter", func=map_reduce_starter_func, constraints=map_reduce_starter_constraints1, metadata={'type': 'map_reduce_starter'})
     GLOBAL_TASKS['MapReduceStarter'] = map_reduce_starter_task
 
-    # 2. Build the workflow
-    wf = Workflow("Demo5")
+    # 2.2 Build the workflow
+    wf = Workflow("Demo4_Combined_Long")
     wf.add_task(static_task1)
     wf.add_task(branch_task, dependencies=['StaticTask1'])
 
@@ -193,4 +178,4 @@ if __name__=="__main__":
         "StaticTask1": [1,2,3,4]
     }
 
-    orch.run_workflow("Demo5", input_data)
+    orch.run_workflow("Demo4_Combined_Long", input_data)
